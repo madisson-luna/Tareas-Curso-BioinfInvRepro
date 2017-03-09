@@ -1,0 +1,29 @@
+#! bin/bash
+
+##Este script sirve para hacer un blast de una secuncia de humano de prion proteins contra la secuencia de un zebra fish
+
+#Primero entramos al directorio donde se va a tener la informacion 
+cd #escribe_aqui_tu_ruta 
+
+#Utilizando el dockerfile biocontainers/blast para descargar BLAST en el contenedor 
+docker pull biocontainers/blast
+
+#Ahora instalamos y corremos el programa BLAST a partir del contenedor 
+docker run biocontainers/blast blastp -help ##blast -help nos muestra el manual de ayuda del programa 
+
+##Asumiendo que ya se instalo BLAST por medio de biocontainer en docker, ya podemos hacer el blast
+
+#Primero se dscarga la scuencia del prion humano
+wget http://www.uniprot.org/uniprot/P04156.fasta
+
+#Se descarga la base de datos del zebra fish
+curl -O ftp://ftp.ncbi.nih.gov/refseq/D_rerio/mRNA_Prot/zebrafish.1.protein.faa.gz
+
+#Definimos como variable la ruta absoluta del directorio donde vamos a trabajar
+miruta=/home/madisson/Documents/MaestriaClases/BioinfInvRepro2017-II/Unidad4/Prac_Uni4/DatosContenedor1
+
+#Montamos un volumen detro de el contenedor biocontainers/blast llamado "data"
+docker run -v $miruta:/data/ biocontainers/blast makeblastdb -in zebrafish.1.protein.faa -dbtype prot
+
+#Se realiza el blast del prion humano con el zebra fish data base
+docker run -v /Users/yperez/workplace:/data/ biocontainers/blast blastp -query P04156.fasta -db zebrafish.1.protein.faa -out results.txt #los resultados del blast van a guardarse en results.txt
