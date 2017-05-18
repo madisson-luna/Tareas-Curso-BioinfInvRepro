@@ -1,0 +1,91 @@
+---
+title: "Script SNPRelate"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+Este script hace un PCA con el paquete SNPRelate de bioconductor
+
+Siempre es bueno trabajar en un lugar limpio
+```{r}
+rm(list=ls())
+
+```
+Requier "gdsfmt" y "SNPRelate" disponibles en bioconductor
+```{r}
+library(gdsfmt)
+library(SNPRelate)
+
+```
+Tutorial SNPRelate en: http://corearray.sourceforge.net/tutorials/SNPRelate/
+
+Primero debemos convertir nuestro vcf a GDS
+```{r}
+vcf50pb2 <- "../data/SNPRelate/50.vcf" #cargar nuestros datos
+snpgdsVCF2GDS(vcf50pb2, "../data/SNPRelate/50pb2.gds", method="biallelic.only") #convertirlos
+snpgdsSummary("../data/SNPRelate/50pb2.gds") #resumen, muestra cuantas muestras tenemos y cuantos SNPs
+```
+Abrimos nuestro GDS
+```{r}
+rata_canguro1 <- snpgdsOpen("../data/SNPrelate/50pb2.gds")
+```
+Cargamos la informacion de nuestras poblaciones (un archivo con el nombre de lapoblacion de c/individuo)
+```{r}
+pop_code <- scan("../data/SNPRelate/pob.txt", what=character())
+table(pop_code) #para ver cuantas muestras tiene cada población
+head(pop_code)
+```
+Espcificamos el ID de las muestras
+```{r}
+sample.id <- read.gdsn(index.gdsn(rata_canguro1, "sample.id"))
+sample.id
+```
+PCA
+```{r}
+pca <- snpgdsPCA(rata_canguro1, sample.id = NULL, snp.id = NULL, autosome.only = F, num.thread=2)
+```
+Obtenemos el porcentage o proporción de la varianza entre poblaciones
+```{r}
+pc.percent <- pca$varprop*100
+head(round(pc.percent, 2))
+```
+Creamos una data.frame con los datos del PCA
+```{r}
+tab <- data.frame(sample.id = pca$sample.id,
+                  EV1 = pca$eigenvect[,1],  # componente 1
+                  EV2 = pca$eigenvect[,2],  # componente 2
+                  stringsAsFactors = FALSE)
+head(tab)
+```
+Graficar
+```{r}
+plot(tab$EV2, tab$EV1, xlab="componente 2", ylab="componente 1")
+```
+Revisar que las muestras y las poblaciones esten en el mismo orden
+```{r}
+sample.id
+pop_code
+head(cbind(sample.id, pop_code))
+```
+Crear una nueva data.frame con los datos anteriores
+```{r}
+tab <- data.frame(sample.id = pca$sample.id,
+                  pop = factor(pop_code)[match(pca$sample.id, sample.id)],
+                  EV1 = pca$eigenvect[,1],    # primer componente
+                  EV2 = pca$eigenvect[,2],    # segundo componente
+                  stringsAsFactors = FALSE)
+head(tab)
+head(cbind(sample.id, pop_code))
+```
+Establecer paleta de colores con un color para cada población
+```{r}
+palette(c("red", "purple" , "blue", "orange"))
+```
+Graficamos nuevamente con la informacion poblacional
+```{r}
+plot(tab$EV2, tab$EV1, col=as.integer(tab$pop), xlab="eigenvector 2", ylab="eigenvector 1")
+legend("topright", legend=levels(tab$pop), pch="o", col=1:nlevels(tab$pop))
+```
+Tenemos nuestro PCA!!!! =^.^=
+Fin
